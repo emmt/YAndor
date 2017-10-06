@@ -7,7 +7,7 @@
 # This file is part of `YAndor` which is licensed under the MIT "Expat"
 # License.
 #
-# Copyright (C) 2014 Éric Thiébaut <https://github.com/emmt/YAndor>
+# Copyright (C) 2014-2017 Éric Thiébaut <https://github.com/emmt/YAndor>
 #
 #------------------------------------------------------------------------------
 
@@ -23,9 +23,9 @@ cfg_tmpfile="$cfg_tmpdir/cfg-$$"
 cfg_debug=no
 
 cfg_on_exit () {
-  if test "$cfg_debug" = "no"; then
-    rm -f "$cfg_tmpfile" "$cfg_tmpfile.i"
-  fi
+    if test "$cfg_debug" = "no"; then
+        rm -f "$cfg_tmpfile" "$cfg_tmpfile.i"
+    fi
 }
 
 trap cfg_on_exit 0
@@ -41,27 +41,31 @@ cfg_opt_value () { echo "$*" | sed -e 's/^--[^=]*=//'; }
 
 cfg_despace () { echo "$*" | sed -e 's/ /\\ /g'; }
 
-cfg_subst_macro () {
-  local s
-  local t
-  s=$*
-  for t in "/" "%" "@" "," "-"; do
-    case "$s" in
-      *$t* )
-        ;;
-      * )
-        break
-    esac
-  done
-  if test "$t" = "-"; then
-    cfg_die "No valid separator found"
-  fi
-  s='[ 	]*'
-  echo "s${t}^${s}${1}${s}=.*${t}${1}=${2}${t}"
+cfg_add_rule () {
+    local s t
+    s=$*
+    for t in "/" "%" "@" "," "-"; do
+        case "$s" in
+            *$t* )
+                ;;
+            * )
+                break
+        esac
+    done
+    if test "$t" = "-"; then
+        cfg_die "No valid separator found"
+    fi
+    s='[ 	]*'
+    s="s${t}^${s}${1}${s}=.*${t}${1}=${2}${t}"
+    if test "x$cfg_filter" = "x"; then
+        cfg_filter="$s"
+    else
+        cfg_filter="$cfg_filter;$s"
+    fi
 }
 
 cfg_help () {
-  cat <<EOF
+    cat <<EOF
 usage: $cfg_progname [-h|--help] [--yorick=PATH_TO_YORICK]
 options:
   --arch=OS-CPU        Architecture [$cfg_arch].
@@ -77,82 +81,82 @@ EOF
 }
 
 if cmp -s "./Makefile" "$cfg_srcdir/Makefile"; then
-  cfg_inplace=yes
+    cfg_inplace=yes
 else
-  cfg_inplace=no
+    cfg_inplace=no
 fi
 
 cfg_os=$(uname -s | tr A-Z a-z)
 if test "x$cfg_os" = "x"; then
-  cfg_os="unknown"
+    cfg_os="unknown"
 fi
 cfg_cpu=$(uname -m | tr A-Z a-z)
 if test "x$cfg_cpu" = "x"; then
-  cfg_cpu="unknown"
+    cfg_cpu="unknown"
 else
-  case "$cfg_cpu" in i?86 ) cfg_cpu="ix86";; esac
+    case "$cfg_cpu" in i?86 ) cfg_cpu="ix86";; esac
 fi
 cfg_arch=${cfg_os}-${cfg_cpu}
 cfg_yorick=yorick
 cfg_prefix=/usr/local
 while test $# -ge 1; do
-  cfg_arg=$1
-  shift
-  case "$cfg_arg" in
-    -h | --help )
-      cfg_help
-      exit 0
-      ;;
-    --debug)
-      cfg_debug=yes
-      ;;
-    --arch=*)
-      cfg_arch=$(cfg_opt_value "$cfg_arg")
-      ;;
-    --cflags=*)
-      cfg_cflags=$(cfg_opt_value "$cfg_arg")
-      ;;
-    --deplibs=*)
-      cfg_deplibs=$(cfg_opt_value "$cfg_arg")
-      ;;
-    --ldflags=*)
-      cfg_ldflags=$(cfg_opt_value "$cfg_arg")
-      ;;
-    --yorick=*)
-      cfg_yorick=$(cfg_opt_value "$cfg_arg")
-      ;;
-    *)
-      cfg_die "Unknown option \"$cfg_arg\""
-  esac
+    cfg_arg=$1
+    shift
+    case "$cfg_arg" in
+        -h | --help )
+            cfg_help
+            exit 0
+            ;;
+        --debug )
+            cfg_debug=yes
+            ;;
+        --arch=* )
+            cfg_arch=$(cfg_opt_value "$cfg_arg")
+            ;;
+        --cflags=* )
+            cfg_cflags=$(cfg_opt_value "$cfg_arg")
+            ;;
+        --deplibs=* )
+            cfg_deplibs=$(cfg_opt_value "$cfg_arg")
+            ;;
+        --ldflags=* )
+            cfg_ldflags=$(cfg_opt_value "$cfg_arg")
+            ;;
+        --yorick=* )
+            cfg_yorick=$(cfg_opt_value "$cfg_arg")
+            ;;
+        * )
+            cfg_die "Unknown option \"$cfg_arg\""
+    esac
 done
 
 case "$cfg_arch" in
-  mswin )
-    cfg_exe_sfx=.exe
-    ;;
-  * )
-    cfg_exe_sfx=
+    mswin )
+        cfg_exe_sfx=.exe
+        ;;
+    * )
+        cfg_exe_sfx=
 esac
 
 # Search Yorick in the path:
 if test "x$cfg_yorick" = "xyorick"; then
-  cfg_save_IFS=$IFS
-  IFS=":"
-  for cfg_dir in $PATH; do
-    cfg_file=$cfg_dir/yorick$cfg_exe_sfx
-    if test -r "$cfg_file" -a -x "$cfg_file" -a ! -d "$cfg_file"; then
-      cfg_yorick=$cfg_file
-      break
-    fi
-  done
-  IFS=$cfg_save_IFS
+    cfg_save_IFS=$IFS
+    IFS=":"
+    for cfg_dir in $PATH; do
+        cfg_file=$cfg_dir/yorick$cfg_exe_sfx
+        if test -r "$cfg_file" -a -x "$cfg_file" -a ! -d "$cfg_file"; then
+            cfg_yorick=$cfg_file
+            break
+        fi
+    done
+    IFS=$cfg_save_IFS
 fi
 if test "x$cfg_yorick" = "xyorick" \
-  -o ! -f "$cfg_yorick" \
-  -o ! -x "$cfg_yorick"; then
-  echo >&2 "Yorick excutable not found."
-  echo >&2 "Try to specify the path with option --yorick=..."
-  exit 1
+        -o ! -f "$cfg_yorick" \
+        -o ! -x "$cfg_yorick"; then
+    echo >&2 "Yorick excutable not found."
+    echo >&2 "Try to specify the path with option --yorick=..."
+    exit 1
 fi
 echo >&2 "Yorick executable --------> $cfg_yorick"
 
@@ -172,25 +176,25 @@ echo >&2 "Yorick site directory ----> $cfg_ysite"
 # Create the Makefile.
 cfg_dst="./Makefile"
 if test "$cfg_inplace" = "yes"; then
-  cfg_src="$cfg_dst.bak"
-  mv -f "$cfg_dst" "$cfg_src"
+    cfg_src="$cfg_dst.bak"
+    mv -f "$cfg_dst" "$cfg_src"
 else
-  cfg_src="$cfg_srcdir/Makefile"
+    cfg_src="$cfg_srcdir/Makefile"
 fi
 
-cfg_s0=$(cfg_subst_macro "Y_EXE"       "$cfg_yorick")
-cfg_s1=$(cfg_subst_macro "Y_MAKEDIR"   "$cfg_ymkdir")
-cfg_s2=$(cfg_subst_macro "Y_EXE_HOME"  "$cfg_yhome")
-cfg_s3=$(cfg_subst_macro "Y_EXE_SITE"  "$cfg_ysite")
-cfg_s4=$(cfg_subst_macro "PKG_CFLAGS"  "$cfg_cflags")
-cfg_s5=$(cfg_subst_macro "PKG_DEPLIBS" "$cfg_deplibs")
-cfg_s6=$(cfg_subst_macro "PKG_LDFLAGS" "$cfg_ldflags")
-cfg_s7=$(cfg_subst_macro "srcdir"      "$cfg_srcdir")
-sed < "$cfg_src" > "$cfg_dst" \
-  -e "$cfg_s0;$cfg_s1;$cfg_s2;$cfg_s3;$cfg_s4;$cfg_s5;$cfg_s6;$cfg_s7"
+cfg_filter=""
+cfg_add_rule "Y_EXE"       "$cfg_yorick"
+cfg_add_rule "Y_MAKEDIR"   "$cfg_ymkdir"
+cfg_add_rule "Y_EXE_HOME"  "$cfg_yhome"
+cfg_add_rule "Y_EXE_SITE"  "$cfg_ysite"
+cfg_add_rule "PKG_CFLAGS"  "$cfg_cflags"
+cfg_add_rule "PKG_DEPLIBS" "$cfg_deplibs"
+cfg_add_rule "PKG_LDFLAGS" "$cfg_ldflags"
+cfg_add_rule "srcdir"      "$cfg_srcdir"
+sed < "$cfg_src" > "$cfg_dst" -e "$cfg_filter"
 
 if test "$cfg_inplace" = "yes"; then
-  rm -f "$cfg_src"
+    rm -f "$cfg_src"
 fi
 
 echo "Makefile has been updated."
